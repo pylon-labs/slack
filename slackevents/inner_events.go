@@ -559,14 +559,6 @@ type TeamDomainChangeEvent struct {
 	TeamID string `json:"team_id"`
 }
 
-// SharedChannelInviteReceivedEvent is sent if a user received an invite to a shared channel.
-type SharedChannelInviteReceivedEvent struct {
-	Type         string         `json:"type"`
-	EventTs      string         `json:"event_ts"`
-	Channel      *slack.Channel `jsopn:"channel"`
-	InvitingUser *slack.User    `json:"inviting_user"`
-}
-
 // UserProfileChangedEvent is sent if access to teams was revoked for your org-wide app.
 type UserProfileChangedEvent struct {
 	User    *slack.User `json:"user"`
@@ -655,8 +647,6 @@ const (
 	MessageMetadataUpdated = EventsAPIType("message_metadata_updated")
 	// MessageMetadataDeleted A message with metadata was deleted
 	MessageMetadataDeleted = EventsAPIType("message_metadata_deleted")
-	// SharedChannelInviteAccepted is sent if a user received an invite to a shared channel.
-	SharedChannelInviteReceived = EventsAPIType("shared_channel_invite_received")
 	// TeamAccessGranted is sent if access to teams was granted for your org-wide app.
 	TeamAccessGranted = EventsAPIType("team_access_granted")
 	// TeamAccessRevoked is sent if access to teams was revoked for your org-wide app.
@@ -711,6 +701,5 @@ var EventsAPIInnerEventMapping = map[EventsAPIType]interface{}{
 	TeamAccessGranted:           TeamAccessGrantedEvent{},
 	TeamAccessRevoked:           TeamAccessRevokedEvent{},
 	TeamDomainChange:            TeamDomainChangeEvent{},
-	SharedChannelInviteReceived: SharedChannelInviteReceivedEvent{},
 	UserProfileChanged:          UserProfileChangedEvent{},
 }
