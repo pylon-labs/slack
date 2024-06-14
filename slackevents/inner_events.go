@@ -97,14 +97,6 @@ type ChannelIDChangedEvent struct {
 	EventTimestamp string `json:"event_ts"`
 }
 
-// ChannelSharedEvent represents the Channel shared event
-type ChannelSharedEvent struct {
-	Type            string `json:"type"`
-	Channel         string `json:"channel"`
-	EventTimestamp  string `json:"event_ts"`
-	ConnectedTeamID string `json:"connected_team_id"`
-}
-
 // ChannelCreatedInfo represents the information associated with the Channel created event
 type ChannelCreatedInfo struct {
 	ID        string `json:"id"`
@@ -590,8 +582,6 @@ const (
 	ChannelRename = EventsAPIType("channel_rename")
 	// ChannelIDChanged is sent when a channel identifier is changed.
 	ChannelIDChanged = EventsAPIType("channel_id_changed")
-	// ChannelShared is sent when a channel is shared.
-	ChannelShared = EventsAPIType("channel_shared")
 	// GroupDeleted is sent when a group is deleted.
 	GroupDeleted = EventsAPIType("group_deleted")
 	// GroupArchive is sent when a group is archived.
