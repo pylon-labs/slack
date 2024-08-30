@@ -334,7 +334,7 @@ func TestTeamDomainChangeEvent(t *testing.T) {
 	{
 		"type": "team_domain_change",
 		"url": "https://my.slack.com",
-		"domain": "my"
+		"domain": "my",
 		"team_id": "T1234"
 	}	
 	`)

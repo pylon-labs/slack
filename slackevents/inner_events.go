@@ -791,7 +791,7 @@ var EventsAPIInnerEventMapping = map[EventsAPIType]interface{}{
 	MemberLeftChannel:           MemberLeftChannelEvent{},
 	PinAdded:                    PinAddedEvent{},
 	PinRemoved:                  PinRemovedEvent{},
-    ProfileOpened:               ProfileOpenedEvent{},
+	ProfileOpened:               ProfileOpenedEvent{},
 	ReactionAdded:               ReactionAddedEvent{},
 	ReactionRemoved:             ReactionRemovedEvent{},
 	SharedChannelInviteApproved: SharedChannelInviteApprovedEvent{},
