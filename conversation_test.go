@@ -398,6 +398,21 @@ func TestInviteSharedToConversation(t *testing.T) {
 			t.Error("is legacy shared channel should be false")
 		}
 	})
+
+	t.Run("generic", func(t *testing.T) {
+		params := &InviteSharedParams{}
+		err := api.InviteShared("CXXXXXXXX", *params)
+		assert.EqualError(t, err, InvalidSharedInviteParamsError.Error())
+
+		params.Emails = []string{"fake@email.com", "another@email.com"}
+		externalLimited := false
+		params.ExternalLimited = &externalLimited
+		err = api.InviteShared("CXXXXXXXX", *params)
+		if err != nil {
+			t.Errorf("Unexpected error: %s", err)
+			return
+		}
+	})
 }
 
 func TestKickUserFromConversation(t *testing.T) {
