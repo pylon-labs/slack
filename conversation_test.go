@@ -287,6 +287,20 @@ func okChannelJsonHandler(rw http.ResponseWriter, r *http.Request) {
 	rw.Write(response)
 }
 
+func okInviteSharedJsonHandler(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+	response, _ := json.Marshal(struct {
+		SlackResponse
+		InviteID              string `json:"invite_id"`
+		IsLegacySharedChannel bool   `json:"is_legacy_shared_channel"`
+	}{
+		SlackResponse:         SlackResponse{Ok: true},
+		InviteID:              "I01234567",
+		IsLegacySharedChannel: false,
+	})
+	rw.Write(response)
+}
+
 func TestSetTopicOfConversation(t *testing.T) {
 	http.HandleFunc("/conversations.setTopic", okChannelJsonHandler)
 	once.Do(startServer)
@@ -346,6 +360,59 @@ func TestInviteUsersToConversation(t *testing.T) {
 		t.Error("channel should not be nil")
 		return
 	}
+}
+
+func TestInviteSharedToConversation(t *testing.T) {
+	http.HandleFunc("/conversations.inviteShared", okInviteSharedJsonHandler)
+	once.Do(startServer)
+	api := New("testing-token", OptionAPIURL("http://"+serverAddr+"/"))
+
+	t.Run("user_ids", func(t *testing.T) {
+		userIDs := []string{"UXXXXXXX1", "UXXXXXXX2"}
+		inviteID, isLegacySharedChannel, err := api.InviteSharedUserIDsToConversation("CXXXXXXXX", userIDs...)
+		if err != nil {
+			t.Errorf("Unexpected error: %s", err)
+			return
+		}
+		if inviteID == "" {
+			t.Error("invite id should have a value")
+			return
+		}
+		if isLegacySharedChannel {
+			t.Error("is legacy shared channel should be false")
+		}
+	})
+
+	t.Run("emails", func(t *testing.T) {
+		emails := []string{"nopcoder@slack.com", "nopcoder@example.com"}
+		inviteID, isLegacySharedChannel, err := api.InviteSharedEmailsToConversation("CXXXXXXXX", emails...)
+		if err != nil {
+			t.Errorf("Unexpected error: %s", err)
+			return
+		}
+		if inviteID == "" {
+			t.Error("invite id should have a value")
+			return
+		}
+		if isLegacySharedChannel {
+			t.Error("is legacy shared channel should be false")
+		}
+	})
+
+	t.Run("generic", func(t *testing.T) {
+		params := &InviteSharedParams{}
+		err := api.InviteShared("CXXXXXXXX", *params)
+		assert.EqualError(t, err, InvalidSharedInviteParamsError.Error())
+
+		params.Emails = []string{"fake@email.com", "another@email.com"}
+		externalLimited := false
+		params.ExternalLimited = &externalLimited
+		err = api.InviteShared("CXXXXXXXX", *params)
+		if err != nil {
+			t.Errorf("Unexpected error: %s", err)
+			return
+		}
+	})
 }
 
 func TestKickUserFromConversation(t *testing.T) {
@@ -586,22 +653,6 @@ func TestMarkConversation(t *testing.T) {
 	once.Do(startServer)
 	api := New("testing-token", OptionAPIURL("http://"+serverAddr+"/"))
 	err := api.MarkConversation("CXXXXXXXX", "1401383885.000061")
-	if err != nil {
-		t.Errorf("Unexpected error: %s", err)
-		return
-	}
-}
-
-func TestInviteShared(t *testing.T) {
-	http.HandleFunc("/conversations.inviteShared", okJSONHandler)
-	once.Do(startServer)
-	api := New("testing-token", OptionAPIURL("http://"+serverAddr+"/"))
-	params := &InviteSharedParams{}
-	err := api.InviteShared("CXXXXXXXX", *params)
-	assert.EqualError(t, err, InvalidSharedInviteParamsError.Error())
-
-	params.Emails = []string{"fake@email.com", "another@email.com"}
-	err = api.InviteShared("CXXXXXXXX", *params)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err)
 		return

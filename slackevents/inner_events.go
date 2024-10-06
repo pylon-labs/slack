@@ -28,6 +28,9 @@ type AppMentionEvent struct {
 
 	// BotID is filled out when a bot triggers the app_mention event
 	BotID string `json:"bot_id,omitempty"`
+
+	// When the app is mentioned in the edited message
+	Edited *Edited `json:"edited,omitempty"`
 }
 
 // AppHomeOpenedEvent Your Slack app home was opened.
@@ -95,14 +98,6 @@ type ChannelIDChangedEvent struct {
 	OldChannelID   string `json:"old_channel_id"`
 	NewChannelID   string `json:"new_channel_id"`
 	EventTimestamp string `json:"event_ts"`
-}
-
-// ChannelSharedEvent represents the Channel shared event
-type ChannelSharedEvent struct {
-	Type            string `json:"type"`
-	Channel         string `json:"channel"`
-	EventTimestamp  string `json:"event_ts"`
-	ConnectedTeamID string `json:"connected_team_id"`
 }
 
 // ChannelCreatedInfo represents the information associated with the Channel created event
@@ -264,6 +259,9 @@ type MessageEvent struct {
 	PreviousMessage *MessageEvent `json:"previous_message,omitempty"`
 	Edited          *Edited       `json:"edited,omitempty"`
 
+	// Deleted Message
+	DeletedTimeStamp string `json:"deleted_ts,omitempty"`
+
 	// Message Subtypes
 	SubType string `json:"subtype,omitempty"`
 
@@ -275,6 +273,7 @@ type MessageEvent struct {
 	Upload bool   `json:"upload"`
 	Files  []File `json:"files"`
 
+	Blocks      slack.Blocks       `json:"blocks,omitempty"`
 	Attachments []slack.Attachment `json:"attachments,omitempty"`
 
 	// Root is the message that was broadcast to the channel when the SubType is
@@ -559,61 +558,110 @@ type TeamDomainChangeEvent struct {
 	TeamID string `json:"team_id"`
 }
 
-type Invite struct {
-	ID              string      `json:"id"`
-	DateCreated     int         `json:"date_created"`
-	DateInvalid     int         `json:"date_invalid"`
-	InvitingTeam    *slack.Team `json:"inviting_team"`
-	InvitingUser    *slack.User `json:"inviting_user"`
-	RecipientEmail  string      `json:"recipient_email"`
-	RecipientUserID string      `json:"recipient_user_id"`
-}
-
-// SharedChannelInviteReceivedEvent is sent if a user received an invite to a shared channel.
-type SharedChannelInviteReceivedEvent struct {
-	Type         string         `json:"type"`
-	EventTs      string         `json:"event_ts"`
-	Channel      *slack.Channel `jsopn:"channel"`
-	InvitingUser *slack.User    `json:"inviting_user"`
-	Invite       *Invite        `json:"invite"`
-}
-
-type SharedChannelInviteAcceptedEvent struct {
-	Type             string         `json:"type"`
-	ApprovalRequired bool           `json:"approval_required"`
-	TeamsInChannel   []*slack.Team  `json:"teams_in_channel"`
-	EventTs          string         `json:"event_ts"`
-	Channel          *slack.Channel `jsopn:"channel"`
-	AcceptingUser    *slack.User    `json:"accepting_user"`
-	Invite           *Invite        `json:"invite"`
-}
-
-type SharedChannelInviteApprovedEvent struct {
-	Type            string         `json:"type"`
-	Invite          *Invite        `json:"invite"`
-	Channel         *slack.Channel `jsopn:"channel"`
-	ApprovingTeamID string         `json:"approving_team_id"`
-	TeamsInChannel  []*slack.Team  `json:"teams_in_channel"`
-	ApprovingUser   *slack.User    `json:"approving_user"`
-	EventTs         string         `json:"event_ts"`
-}
-
-type SharedChannelInviteDeclinedEvent struct {
-	Type            string         `json:"type"`
-	Invite          *Invite        `json:"invite"`
-	Channel         *slack.Channel `jsopn:"channel"`
-	DecliningTeamID string         `json:"declining_team_id"`
-	DecliningUser   *slack.User    `json:"declining_user"`
-	TeamsInChannel  []*slack.Team  `json:"teams_in_channel"`
-	EventTs         string         `json:"event_ts"`
-}
-
 // UserProfileChangedEvent is sent if access to teams was revoked for your org-wide app.
 type UserProfileChangedEvent struct {
 	User    *slack.User `json:"user"`
 	CacheTs int         `json:"cache_ts"`
 	Type    string      `json:"type"`
 	EventTs string      `json:"event_ts"`
+}
+
+// SharedChannelInviteApprovedEvent is sent if your invitation has been approved
+type SharedChannelInviteApprovedEvent struct {
+	Type            string              `json:"type"`
+	Invite          *SharedInvite       `json:"invite"`
+	Channel         *slack.Conversation `json:"channel"`
+	ApprovingTeamID string              `json:"approving_team_id"`
+	TeamsInChannel  []*SlackEventTeam   `json:"teams_in_channel"`
+	ApprovingUser   *SlackEventUser     `json:"approving_user"`
+	EventTs         string              `json:"event_ts"`
+}
+
+// SharedChannelInviteAcceptedEvent is sent if external org accepts a Slack Connect channel invite
+type SharedChannelInviteAcceptedEvent struct {
+	Type                string            `json:"type"`
+	ApprovalRequired    bool              `json:"approval_required"`
+	Invite              *SharedInvite     `json:"invite"`
+	Channel             *SharedChannel    `json:"channel"`
+	TeamsInChannel      []*SlackEventTeam `json:"teams_in_channel"`
+	AcceptingUser       *SlackEventUser   `json:"accepting_user"`
+	EventTs             string            `json:"event_ts"`
+	RequiresSponsorship bool              `json:"requires_sponsorship,omitempty"`
+}
+
+// SharedChannelInviteDeclinedEvent is sent if external or internal org declines the Slack Connect invite
+type SharedChannelInviteDeclinedEvent struct {
+	Type            string            `json:"type"`
+	Invite          *SharedInvite     `json:"invite"`
+	Channel         *SharedChannel    `json:"channel"`
+	DecliningTeamID string            `json:"declining_team_id"`
+	TeamsInChannel  []*SlackEventTeam `json:"teams_in_channel"`
+	DecliningUser   *SlackEventUser   `json:"declining_user"`
+	EventTs         string            `json:"event_ts"`
+}
+
+// SharedChannelInviteReceivedEvent is sent if a bot or app is invited to a Slack Connect channel
+type SharedChannelInviteReceivedEvent struct {
+	Type    string         `json:"type"`
+	Invite  *SharedInvite  `json:"invite"`
+	Channel *SharedChannel `json:"channel"`
+	EventTs string         `json:"event_ts"`
+}
+
+// SlackEventTeam is a struct for teams in ShareChannel events
+type SlackEventTeam struct {
+	ID                  string          `json:"id"`
+	Name                string          `json:"name"`
+	Icon                *SlackEventIcon `json:"icon,omitempty"`
+	AvatarBaseURL       string          `json:"avatar_base_url,omitempty"`
+	IsVerified          bool            `json:"is_verified"`
+	Domain              string          `json:"domain"`
+	DateCreated         int             `json:"date_created"`
+	RequiresSponsorship bool            `json:"requires_sponsorship,omitempty"`
+	// TeamID              string          `json:"team_id,omitempty"`
+}
+
+// SlackEventIcon is a struct for icons in ShareChannel events
+type SlackEventIcon struct {
+	ImageDefault bool   `json:"image_default,omitempty"`
+	Image34      string `json:"image_34,omitempty"`
+	Image44      string `json:"image_44,omitempty"`
+	Image68      string `json:"image_68,omitempty"`
+	Image88      string `json:"image_88,omitempty"`
+	Image102     string `json:"image_102,omitempty"`
+	Image132     string `json:"image_132,omitempty"`
+	Image230     string `json:"image_230,omitempty"`
+}
+
+// SlackEventUser is a struct for users in ShareChannel events
+type SlackEventUser struct {
+	ID                     string             `json:"id"`
+	TeamID                 string             `json:"team_id"`
+	Name                   string             `json:"name"`
+	Updated                int                `json:"updated,omitempty"`
+	Profile                *slack.UserProfile `json:"profile,omitempty"`
+	WhoCanShareContactCard string             `json:"who_can_share_contact_card,omitempty"`
+}
+
+// SharedChannel is a struct for shared channels in ShareChannel events
+type SharedChannel struct {
+	ID        string `json:"id"`
+	IsPrivate bool   `json:"is_private"`
+	IsIm      bool   `json:"is_im"`
+	Name      string `json:"name,omitempty"`
+}
+
+// SharedInvite is a struct for shared invites in ShareChannel events
+type SharedInvite struct {
+	ID                string          `json:"id"`
+	DateCreated       int             `json:"date_created"`
+	DateInvalid       int             `json:"date_invalid"`
+	InvitingTeam      *SlackEventTeam `json:"inviting_team,omitempty"`
+	InvitingUser      *SlackEventUser `json:"inviting_user,omitempty"`
+	RecipientEmail    string          `json:"recipient_email,omitempty"`
+	RecipientUserID   string          `json:"recipient_user_id,omitempty"`
+	IsSponsored       bool            `json:"is_sponsored,omitempty"`
+	IsExternalLimited bool            `json:"is_external_limited,omitempty"`
 }
 
 type EventsAPIType string
@@ -639,8 +687,6 @@ const (
 	ChannelRename = EventsAPIType("channel_rename")
 	// ChannelIDChanged is sent when a channel identifier is changed.
 	ChannelIDChanged = EventsAPIType("channel_id_changed")
-	// ChannelShared is sent when a channel is shared.
-	ChannelShared = EventsAPIType("channel_shared")
 	// GroupDeleted is sent when a group is deleted.
 	GroupDeleted = EventsAPIType("group_deleted")
 	// GroupArchive is sent when a group is archived.
@@ -684,6 +730,14 @@ const (
 	ReactionRemoved = EventsAPIType("reaction_removed")
 	// TeamJoin A new user joined the workspace
 	TeamJoin = EventsAPIType("team_join")
+	// Slack connect app or bot invite received
+	SharedChannelInviteReceived = EventsAPIType("shared_channel_invite_received")
+	// Slack connect channel invite approved
+	SharedChannelInviteApproved = EventsAPIType("shared_channel_invite_approved")
+	// Slack connect channel invite declined
+	SharedChannelInviteDeclined = EventsAPIType("shared_channel_invite_declined")
+	// Slack connect channel invite accepted by an end user
+	SharedChannelInviteAccepted = EventsAPIType("shared_channel_invite_accepted")
 	// TokensRevoked APP's API tokes are revoked
 	TokensRevoked = EventsAPIType("tokens_revoked")
 	// EmojiChanged A custom emoji has been added or changed
@@ -696,14 +750,6 @@ const (
 	MessageMetadataUpdated = EventsAPIType("message_metadata_updated")
 	// MessageMetadataDeleted A message with metadata was deleted
 	MessageMetadataDeleted = EventsAPIType("message_metadata_deleted")
-	// SharedChannelInviteReceived is sent if a user received an invite to a shared channel.
-	SharedChannelInviteReceived = EventsAPIType("shared_channel_invite_received")
-	// SharedChannelInviteAccepted is sent if a user accepted an invite to a shared channel.
-	SharedChannelInviteAccepted = EventsAPIType("shared_channel_invite_accepted")
-	// SharedChannelInviteApproved is sent if a user approved an invite to a shared channel.
-	SharedChannelInviteApproved = EventsAPIType("shared_channel_invite_approved")
-	// SharedChannelInviteDeclined is sent if a user declined an invite to a shared channel.
-	SharedChannelInviteDeclined = EventsAPIType("shared_channel_invite_declined")
 	// TeamAccessGranted is sent if access to teams was granted for your org-wide app.
 	TeamAccessGranted = EventsAPIType("team_access_granted")
 	// TeamAccessRevoked is sent if access to teams was revoked for your org-wide app.
@@ -748,6 +794,10 @@ var EventsAPIInnerEventMapping = map[EventsAPIType]interface{}{
 	ProfileOpened:               ProfileOpenedEvent{},
 	ReactionAdded:               ReactionAddedEvent{},
 	ReactionRemoved:             ReactionRemovedEvent{},
+	SharedChannelInviteApproved: SharedChannelInviteApprovedEvent{},
+	SharedChannelInviteAccepted: SharedChannelInviteAcceptedEvent{},
+	SharedChannelInviteDeclined: SharedChannelInviteDeclinedEvent{},
+	SharedChannelInviteReceived: SharedChannelInviteReceivedEvent{},
 	TeamJoin:                    TeamJoinEvent{},
 	TokensRevoked:               TokensRevokedEvent{},
 	EmojiChanged:                EmojiChangedEvent{},
@@ -758,9 +808,5 @@ var EventsAPIInnerEventMapping = map[EventsAPIType]interface{}{
 	TeamAccessGranted:           TeamAccessGrantedEvent{},
 	TeamAccessRevoked:           TeamAccessRevokedEvent{},
 	TeamDomainChange:            TeamDomainChangeEvent{},
-	SharedChannelInviteReceived: SharedChannelInviteReceivedEvent{},
-	SharedChannelInviteAccepted: SharedChannelInviteAcceptedEvent{},
-	SharedChannelInviteApproved: SharedChannelInviteApprovedEvent{},
-	SharedChannelInviteDeclined: SharedChannelInviteDeclinedEvent{},
 	UserProfileChanged:          UserProfileChangedEvent{},
 }
